@@ -20,7 +20,12 @@ func main() {
 		log.Fatalf("cant read json: %v", err)
 	}
 
-	dTmp := AnalyseData(matches)
+	dTmp, data2 := AnalyseData(matches)
+
+	j := models.ToJSONstruct{
+		Data:    dTmp,
+		DataTwo: data2,
+	}
 
 	// Creating file
 	fout, err := os.Create(out)
@@ -28,7 +33,7 @@ func main() {
 		log.Fatalf("cant create file (%s): %v", out, err)
 	}
 	defer fout.Close()
-	err = json.NewEncoder(fout).Encode(dTmp)
+	err = json.NewEncoder(fout).Encode(j)
 	if err != nil {
 		log.Fatalf("cant encode json to file (%s): %v", out, err)
 	}
@@ -40,8 +45,8 @@ func main() {
 	}
 	defer fin.Close()
 
-	var data models.Data
-	err = json.NewDecoder(fin).Decode(&data)
+	var j2 models.ToJSONstruct
+	err = json.NewDecoder(fin).Decode(&j2)
 	if err != nil {
 		log.Fatalf("cant decoded json from file (%s): %v", out, err)
 	}
@@ -57,7 +62,9 @@ func main() {
 
 	dTmp = models.Data{}
 
-	log.Println(data)
+	data := j2.DataTwo
+	tbl := data.ToCommandTable()
+	log.Println(tbl)
 }
 
 func ReadJSON(fileName string) ([]models.Match, error) {
@@ -84,45 +91,49 @@ func ReadJSON(fileName string) ([]models.Match, error) {
 
 // TODO: models.DataTwo
 
-func AnalyseData(matches []models.Match) models.Data {
+func AnalyseData(matches []models.Match) (models.Data, models.DataTwo) {
 	d := make(models.Data)
+	d2 := make(models.DataTwo)
 	for _, m := range matches {
 		h := m.Host
 		g := m.Guest
-		dh := d[h.Title]
-		dg := d[g.Title]
 
-		dh.Missed += int(g.Goals)
-		dg.Missed += int(h.Goals)
+		d2h := d2[h.Title]
+		d2g := d2[g.Title]
 
-		dh.Goals += int(h.Goals)
-		dg.Goals += int(g.Goals)
+		d2h.Missed.Home += int(g.Goals)
+		d2g.Missed.Guest += int(h.Goals)
+
+		d2h.Goals.Home += int(h.Goals)
+		d2g.Goals.Guest += int(g.Goals)
 
 		if h.Goals > g.Goals {
 			if m.Overtime == true {
-				dh.WinsInOvertime++
-				dg.LosesInOvertime++
+				d2h.WinsInOvertime.Home++
+				d2g.LosesInOvertime.Guest++
 			} else {
-				dh.WinsInMainTime++
-				dg.LosesInMainTime++
+				d2h.WinsInMainTime.Home++
+				d2g.LosesInMainTime.Guest++
 			}
 		} else if h.Goals < g.Goals {
 			if m.Overtime == true {
-				dg.WinsInOvertime++
-				dh.LosesInOvertime++
+				d2g.WinsInOvertime.Guest++
+				d2h.LosesInOvertime.Home++
 			} else {
-				dg.WinsInMainTime++
-				dh.LosesInMainTime++
+				d2g.WinsInMainTime.Guest++
+				d2h.LosesInMainTime.Home++
 			}
 		} else { // h Goals == g Goals
-			dg.Draw++
-			dh.Draw++
+			d2g.Draw.Guest++
+			d2h.Draw.Guest++
 		}
 
-		d[h.Title] = dh
-		d[g.Title] = dg
+		d[h.Title] = d2h.ToAmounts()
+		d[g.Title] = d2g.ToAmounts()
 
+		d2[h.Title] = d2h
+		d2[g.Title] = d2g
 	}
 
-	return d
+	return d, d2
 }

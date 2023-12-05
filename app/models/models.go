@@ -19,6 +19,11 @@ type (
 		Overtime bool
 	}
 
+	ToJSONstruct struct {
+		Data    Data    `json:"data"`
+		DataTwo DataTwo `json:"data_two"`
+	}
+
 	Amounts struct {
 		WinsInOvertime  int `json:"wins_in_overtime"`
 		WinsInMainTime  int `json:"wins_in_maintime"`
@@ -44,6 +49,28 @@ type (
 		Missed          FieldHostGuest `json:"missed"`
 	}
 
-	Data    map[string]Amounts
-	DataTwo map[string]AmountsTwo
+	Data         map[string]Amounts
+	DataTwo      map[string]AmountsTwo
+	CommandTable map[AmountsTwo]uint
 )
+
+func (d DataTwo) ToCommandTable() CommandTable {
+	t := make(CommandTable)
+	var i uint
+	for _, a := range d {
+		t[a] = i
+	}
+	return t
+}
+
+func (a *AmountsTwo) ToAmounts() Amounts {
+	return Amounts{
+		WinsInOvertime:  a.WinsInOvertime.Guest + a.WinsInOvertime.Home,
+		WinsInMainTime:  a.WinsInMainTime.Guest + a.WinsInMainTime.Home,
+		LosesInOvertime: a.LosesInOvertime.Guest + a.LosesInOvertime.Home,
+		LosesInMainTime: a.LosesInMainTime.Guest + a.LosesInMainTime.Home,
+		Draw:            a.Draw.Guest + a.Draw.Home,
+		Goals:           a.Goals.Guest + a.Goals.Home,
+		Missed:          a.Missed.Guest + a.Missed.Home,
+	}
+}
