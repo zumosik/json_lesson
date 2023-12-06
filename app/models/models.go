@@ -1,5 +1,10 @@
 package models
 
+import (
+	"log"
+	"strconv"
+)
+
 type (
 	Date struct {
 		Year  uint16 `json:"year"`
@@ -49,18 +54,39 @@ type (
 		Missed          FieldHostGuest `json:"missed"`
 	}
 
-	Data         map[string]Amounts
-	DataTwo      map[string]AmountsTwo
-	CommandTable map[AmountsTwo]uint
+	Data           map[string]Amounts
+	DataTwo        map[string]AmountsTwo
+	CommandIndexes map[Team]uint
+	CommandTable   [][]int
 )
 
-func (d DataTwo) ToCommandTable() CommandTable {
-	t := make(CommandTable)
-	var i uint
-	for _, a := range d {
-		t[a] = i
+func (i CommandIndexes) ToCommandTable(m []Match) CommandTable {
+	tbl := make(CommandTable, len(m))
+	for _, mm := range m {
+		if len(tbl[i[mm.Host]]) == 0 {
+			// log.Println("empty")
+			tbl[i[mm.Host]] = make([]int, len(m))
+		}
+		// if mm.Host.Goals == 0 {
+		// 	log.Printf("%s: %d", mm.Host.Title, 0)
+		// }
+		tbl[i[mm.Host]][i[mm.Guest]] = int(mm.Host.Goals)
 	}
-	return t
+	return tbl
+}
+
+func (tbl CommandTable) Print() {
+	// log.Println("table")
+	for _, l := range tbl {
+		var t string
+		if len(l) < 1 {
+			continue
+		}
+		for _, ll := range l {
+			t += strconv.Itoa(ll) + ","
+		}
+		log.Println(t)
+	}
 }
 
 func (a *AmountsTwo) ToAmounts() Amounts {

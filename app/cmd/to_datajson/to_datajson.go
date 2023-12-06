@@ -10,10 +10,24 @@ import (
 )
 
 func main() {
-	var inp, out string
+	var inp, out, logout string
+	var logToFile bool
 	flag.StringVar(&inp, "input-file-path", "../hockey.json", "path to hockey file (json)")
 	flag.StringVar(&out, "output-file-path", "../hockey_result.json", "path to hockey output file (json)")
+	flag.BoolVar(&logToFile, "log-to-file", false, "if you want logs to file (log-file-path to set path)")
+	flag.StringVar(&logout, "log-file-path", "log.log", "path to log file")
 	flag.Parse()
+
+	if logToFile == true {
+		f, err := os.Create(logout)
+		if err != nil {
+			log.Fatalf("cant open file for logs (%s): %v", logout, err)
+		}
+		log.Default().SetOutput(f)
+		defer f.Close()
+	} else {
+		log.Default().SetOutput(os.Stdout)
+	}
 
 	matches, err := ReadJSON(inp)
 	if err != nil {
@@ -62,9 +76,31 @@ func main() {
 
 	dTmp = models.Data{}
 
+	var teams []models.Team
+	for _, m := range matches {
+		var h, g bool
+		for _, t := range teams {
+			if t == m.Host {
+				h = true
+			}
+			if t == m.Guest {
+				g = true
+			}
+		}
+		if h == false {
+			teams = append(teams, m.Host)
+		}
+
+		if g == false {
+			teams = append(teams, m.Guest)
+		}
+	}
+
 	data := j2.DataTwo
-	tbl := data.ToCommandTable()
-	log.Println(tbl)
+	_ = data
+	indexes := ToCommandIndexes(teams)
+	tbl := indexes.ToCommandTable(matches)
+	tbl.Print()
 }
 
 func ReadJSON(fileName string) ([]models.Match, error) {
@@ -136,4 +172,14 @@ func AnalyseData(matches []models.Match) (models.Data, models.DataTwo) {
 	}
 
 	return d, d2
+}
+
+func ToCommandIndexes(m []models.Team) models.CommandIndexes {
+	t := make(models.CommandIndexes)
+	var i uint
+	for _, a := range m {
+		t[a] = i
+		i++
+	}
+	return t
 }
